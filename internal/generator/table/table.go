@@ -195,6 +195,7 @@ func (tg *tableGen) Generate(fn *parser.FuncInfo) (*generator.Result, error) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.%s, func(t *testing.T) {
+			t.Skip("TODO: define expected behavior")
 			%s
 %s
 		})
@@ -227,17 +228,10 @@ func (tg *tableGen) generateNoParams(fn *parser.FuncInfo, s score.Score) *genera
 	}
 	assignLine := fmt.Sprintf("%s := %s", strings.Join(gotVars, ", "), callExpr)
 
-	checkLines := []string{}
-	for i := range fn.Returns {
-		checkLines = append(checkLines, fmt.Sprintf("\t\tif got%d == nil {", i))
-		checkLines = append(checkLines, "\t\t\tt.Skip(\"TODO: define expected behavior\")")
-		checkLines = append(checkLines, "\t\t}")
-	}
-
 	code := fmt.Sprintf(`func Test%s(t *testing.T) {
+	t.Skip("TODO: define expected behavior")
 	%s
-%s
-}`, fn.Name, assignLine, strings.Join(checkLines, "\n"))
+}`, fn.Name, assignLine)
 
 	return &generator.Result{
 		Code:       code,

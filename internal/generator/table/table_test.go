@@ -36,6 +36,9 @@ func TestTableGenerator_SimpleFunc(t *testing.T) {
 	if !strings.Contains(res.Code, "Add(") {
 		t.Error("generated code missing Add call")
 	}
+	if !strings.Contains(res.Code, `t.Skip("TODO: define expected behavior")`) {
+		t.Error("generated table test should skip placeholder expected values")
+	}
 
 	t.Logf("generated:\n%s", res.Code)
 }
@@ -81,6 +84,12 @@ func TestTableGenerator_NoParams(t *testing.T) {
 	}
 	if !strings.Contains(res.Code, "NoParams()") {
 		t.Error("generated code missing NoParams() call")
+	}
+	if strings.Contains(res.Code, "== nil") {
+		t.Error("generated no-params table test should not compare arbitrary return values with nil")
+	}
+	if !strings.Contains(res.Code, `t.Skip("TODO: define expected behavior")`) {
+		t.Error("generated no-params table test should skip placeholder expected behavior")
 	}
 
 	t.Logf("generated:\n%s", res.Code)
