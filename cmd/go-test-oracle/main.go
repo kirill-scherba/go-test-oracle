@@ -1,3 +1,9 @@
+// Copyright (c) 2026 Kirill Scherba <kirill@scherba.ru>
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 // go-test-oracle CLI — generates Go test scaffolding from source code.
 package main
 
@@ -5,7 +11,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/kirill-scherba/go-test-oracle/internal/generator"
@@ -16,6 +21,8 @@ import (
 	"github.com/kirill-scherba/go-test-oracle/internal/parser"
 )
 
+// generatorsFlag implements the flag.Value interface for comma-separated
+// generator names.
 type generatorsFlag []string
 
 func (g *generatorsFlag) String() string { return strings.Join(*g, ",") }
@@ -29,7 +36,7 @@ func (g *generatorsFlag) Set(v string) error {
 func main() {
 	var (
 		funcFlag      = flag.String("func", "", "Function name to generate tests for (default: all exported)")
-		generatorFlag = generatorsFlag{"all"}
+		generatorFlag = generatorsFlag{} // empty default means all generators
 		outputFlag    = flag.String("output", "stdout", "Output target: stdout (default), file, or path to write")
 		formatFlag    = flag.String("format", "fragment", "Output format: fragment (default), file, diff")
 		allFlag       = flag.Bool("all", false, "Include unexported functions")
@@ -52,16 +59,15 @@ func main() {
 		*funcFlag = args[1]
 	}
 
-	// Determine package name from file path
-	pkg := filepath.Base(filepath.Dir(path))
-	if pkg == "." || pkg == "" {
-		pkg = "main"
-	}
-
-	// Parse source file
+	// Parse source file and extract package name
 	funcs, err := parser.ParseFile(path)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error parsing %s: %v\n", path, err)
+		os.Exit(1)
+	}
+	pkgName, err := parser.PackageName(path)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading package name from %s: %v\n", path, err)
 		os.Exit(1)
 	}
 
@@ -89,7 +95,13 @@ func main() {
 		}
 	}
 
-	var out []string
+	// Collect generation results
+	type genResult struct {
+		gen    string
+		fn     string
+		result *generator.Result
+	}
+	var results []genResult
 	for _, fn := range targets {
 		for _, gen := range gens {
 			res, err := gen.Generate(&fn)
@@ -100,29 +112,44 @@ func main() {
 			if res == nil {
 				continue
 			}
-
-			// Collect header
-			out = append(out, fmt.Sprintf("// --- %s: %s (confidence: %.2f)\n// %s\n", gen.Name(), fn.Name, res.Confidence, res.Reason))
-			out = append(out, output.Format(res, *formatFlag, pkg, nil))
-			out = append(out, "")
+			results = append(results, genResult{gen.Name(), fn.Name, res})
 		}
 	}
 
-	result := strings.Join(out, "\n")
+	// Build output
+	var fragments []string
+	var allImports []string
+	for _, r := range results {
+		fragments = append(fragments, fmt.Sprintf(
+			"// --- %s: %s (confidence: %.2f)\n// %s\n%s",
+			r.gen, r.fn, r.result.Confidence, r.result.Reason, r.result.Code,
+		))
+		allImports = append(allImports, r.result.Imports...)
+	}
+
+	outputBody := strings.Join(fragments, "\n\n")
+
+	// Apply format wrapping
+	switch *formatFlag {
+	case "file":
+		outputBody = output.FormatFileAll(fragments, pkgName, allImports)
+	case "diff":
+		outputBody = output.FormatDiffAll(fragments, pkgName, allImports)
+	}
 
 	switch *outputFlag {
 	case "stdout":
-		fmt.Println(result)
+		fmt.Println(outputBody)
 	case "file":
 		testPath := output.TestFileName(path)
-		if err := os.WriteFile(testPath, []byte(result), 0644); err != nil {
+		if err := os.WriteFile(testPath, []byte(outputBody), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", testPath, err)
 			os.Exit(1)
 		}
 		fmt.Fprintf(os.Stderr, "Wrote %s\n", testPath)
 	default:
 		// Treat as file path
-		if err := os.WriteFile(*outputFlag, []byte(result), 0644); err != nil {
+		if err := os.WriteFile(*outputFlag, []byte(outputBody), 0644); err != nil {
 			fmt.Fprintf(os.Stderr, "Error writing %s: %v\n", *outputFlag, err)
 			os.Exit(1)
 		}
@@ -130,8 +157,13 @@ func main() {
 	}
 }
 
+// selectGenerators returns the generator instances matching the requested names.
+// An empty or ["all"] list returns all available generators.
 func selectGenerators(names []string) []generator.Generator {
 	all := []generator.Generator{edge.New(), fuzz.New(), table.New()}
+	if len(names) == 0 {
+		return all
+	}
 	for _, name := range names {
 		if name == "all" {
 			return all

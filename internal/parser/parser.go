@@ -1,7 +1,14 @@
+// Copyright (c) 2026 Kirill Scherba <kirill@scherba.ru>
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 // Package parser parses Go source files and extracts function signatures via AST.
 package parser
 
 import (
+	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -64,6 +71,23 @@ type FuncInfo struct {
 	IsVariadic bool       // Has ...T final parameter
 	Pos        token.Pos  // Source position
 	File       string     // Source file path
+}
+
+// PackageName extracts the package name from a Go source file.
+func PackageName(path string) (string, error) {
+	src, err := os.ReadFile(path)
+	if err != nil {
+		return "", err
+	}
+	fset := token.NewFileSet()
+	f, err := parser.ParseFile(fset, path, src, parser.ParseComments)
+	if err != nil {
+		return "", err
+	}
+	if f.Name == nil {
+		return "", fmt.Errorf("no package declaration in %s", path)
+	}
+	return f.Name.Name, nil
 }
 
 // ParseFile parses a Go source file and returns all function declarations found.

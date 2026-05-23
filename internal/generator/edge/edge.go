@@ -1,3 +1,9 @@
+// Copyright (c) 2026 Kirill Scherba <kirill@scherba.ru>
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 // Package edge generates edge-case test scaffolding.
 package edge
 
@@ -18,60 +24,61 @@ func (e *edgeGen) Name() string { return "edge" }
 
 // EdgeCase describes one edge value for a parameter.
 type edgeCase struct {
-	Name      string // e.g. "nil", "zero", "empty"
-	Code      string // Go literal or expression
-	NeedsMath bool   // Requires "math" import
+	Name        string // e.g. "nil", "zero", "empty"
+	Code        string // Go literal or expression
+	NeedsMath   bool   // Requires "math" import
+	NeedsString bool   // Requires "strings" import
 }
 
 // edgeMap maps TypeKind to known edge values.
 var edgeMap = map[parser.TypeKind][]edgeCase{
 	parser.KindInt: {
-		{"zero", "0", false},
-		{"negative", "-1", false},
-		{"positive", "1", false},
-		{"max", "math.MaxInt64", true},
-		{"min", "math.MinInt64", true},
+		{Name: "zero", Code: "0"},
+		{Name: "negative", Code: "-1"},
+		{Name: "positive", Code: "1"},
+		{Name: "max", Code: "math.MaxInt64", NeedsMath: true},
+		{Name: "min", Code: "math.MinInt64", NeedsMath: true},
 	},
 	parser.KindFloat: {
-		{"zero", "0.0", false},
-		{"negative", "-1.0", false},
-		{"positive", "1.0", false},
-		{"nan", "math.NaN()", true},
-		{"inf", "math.Inf(1)", true},
-		{"neg_inf", "math.Inf(-1)", true},
+		{Name: "zero", Code: "0.0"},
+		{Name: "negative", Code: "-1.0"},
+		{Name: "positive", Code: "1.0"},
+		{Name: "nan", Code: "math.NaN()", NeedsMath: true},
+		{Name: "inf", Code: "math.Inf(1)", NeedsMath: true},
+		{Name: "neg_inf", Code: "math.Inf(-1)", NeedsMath: true},
 	},
 	parser.KindString: {
-		{"empty", `""`, false},
-		{"space", `" "`, false},
-		{"unicode", `"Привет"`, false},
-		{"null_byte", `"\x00"`, false},
-		{"long", `strings.Repeat("a", 1000)`, false},
+		{Name: "empty", Code: `""`},
+		{Name: "space", Code: `" "`},
+		{Name: "unicode", Code: `"Привет"`},
+		{Name: "null_byte", Code: `"\x00"`},
+		{Name: "long", Code: `strings.Repeat("a", 1000)`, NeedsString: true},
 	},
 	parser.KindBool: {
-		{"true", "true", false},
-		{"false", "false", false},
+		{Name: "true", Code: "true"},
+		{Name: "false", Code: "false"},
 	},
 	parser.KindSlice: {
-		{"nil", "nil", false},
-		{"empty", "nil /* empty slice: []T{} requires concrete type */", false},
+		{Name: "nil", Code: "nil"},
+		{Name: "empty", Code: "nil /* empty slice: []T{} requires concrete type */"},
 	},
 	parser.KindMap: {
-		{"nil", "nil", false},
-		{"empty", "nil /* empty map: map[K]V{} requires concrete type */", false},
+		{Name: "nil", Code: "nil"},
+		{Name: "empty", Code: "nil /* empty map: map[K]V{} requires concrete type */"},
 	},
 	parser.KindPointer: {
-		{"nil", "nil", false},
+		{Name: "nil", Code: "nil"},
 	},
 	parser.KindChan: {
-		{"nil", "nil", false},
+		{Name: "nil", Code: "nil"},
 	},
 	parser.KindInterface: {
-		{"nil", "nil", false},
-		{"string", `"hello"`, false},
-		{"int", "42", false},
+		{Name: "nil", Code: "nil"},
+		{Name: "string", Code: `"hello"`},
+		{Name: "int", Code: "42"},
 	},
 	parser.KindFunc: {
-		{"nil", "nil", false},
+		{Name: "nil", Code: "nil"},
 	},
 }
 
@@ -119,6 +126,7 @@ func (e *edgeGen) Generate(fn *parser.FuncInfo) (*generator.Result, error) {
 	var fields []string
 	var imports []string
 	hasMath := false
+	hasStrings := false
 
 	// Name of the test description field
 	testNameField := e.uniquify("name", fn.Params)
@@ -144,11 +152,14 @@ func (e *edgeGen) Generate(fn *parser.FuncInfo) (*generator.Result, error) {
 		edges := edgeMap[p.Type.Kind]
 		if len(edges) == 0 {
 			// Unknown type — single case with zero value
-			edges = []edgeCase{{"zero", typicalValue(p.Type), false}}
+			edges = []edgeCase{{Name: "zero", Code: typicalValue(p.Type)}}
 		}
 		for _, edge := range edges {
 			if edge.NeedsMath {
 				hasMath = true
+			}
+			if edge.NeedsString {
+				hasStrings = true
 			}
 			vals := make([]string, len(fn.Params))
 			for j := range fn.Params {
@@ -171,6 +182,9 @@ func (e *edgeGen) Generate(fn *parser.FuncInfo) (*generator.Result, error) {
 
 	if hasMath {
 		imports = append(imports, "math")
+	}
+	if hasStrings {
+		imports = append(imports, "strings")
 	}
 
 	// Determine confidence

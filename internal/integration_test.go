@@ -71,7 +71,7 @@ func TestEndToEnd_GeneratedCodeCompiles(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	// Copy original sample.go into same temp dir (so package matches)
+	// Copy original sample.go and go.mod into the same temp dir
 	origBytes, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatalf("ReadFile(%q): %v", path, err)
@@ -81,11 +81,24 @@ func TestEndToEnd_GeneratedCodeCompiles(t *testing.T) {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
-	// Run gofmt to check syntax (doesn't require type resolution)
-	cmd := exec.Command("gofmt", "-e", testFile)
+	// Copy go.mod into tmpDir so go test -c can resolve the module
+	_, currentFile, _, _ := runtime.Caller(0)
+	projRoot := filepath.Dir(filepath.Dir(currentFile)) // go up from internal/ to project root
+	goModBytes, err := os.ReadFile(filepath.Join(projRoot, "go.mod"))
+	if err != nil {
+		t.Fatalf("ReadFile(go.mod): %v", err)
+	}
+	goModCopy := filepath.Join(tmpDir, "go.mod")
+	if err := os.WriteFile(goModCopy, goModBytes, 0644); err != nil {
+		t.Fatalf("WriteFile(go.mod): %v", err)
+	}
+
+	// Run go test -c to verify the generated code compiles (type resolution)
+	cmd := exec.Command("go", "test", "-c", "-o", "/dev/null")
+	cmd.Dir = tmpDir
 	out, err := cmd.CombinedOutput()
 	if err != nil {
-		t.Fatalf("gofmt failed (syntax error):\n%s", out)
+		t.Fatalf("go test -c failed (compilation error):\n%s", out)
 	}
 }
 

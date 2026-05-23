@@ -1,3 +1,9 @@
+// Copyright (c) 2026 Kirill Scherba <kirill@scherba.ru>
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 // Package score calculates confidence scores for generated tests.
 package score
 
@@ -15,10 +21,11 @@ type Score struct {
 	Skip       bool               // Inject t.Skip if true
 }
 
+// Threshold values for confidence scoring.
 const (
-	ThresholdHigh   = 0.8
-	ThresholdMedium = 0.6
-	ThresholdLow    = 0.0
+	ThresholdHigh   = 0.8 // Confidence above this is considered high
+	ThresholdMedium = 0.6 // Confidence above this is considered medium
+	ThresholdLow    = 0.0 // Confidence below this is considered low
 )
 
 // knownEdgeTypes counts how many parameter types have defined edge cases.

@@ -1,3 +1,9 @@
+// Copyright (c) 2026 Kirill Scherba <kirill@scherba.ru>
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 // go-test-oracle-mcp — MCP adapter (JSON-RPC wrapper for go-test-oracle).
 package main
 
@@ -145,13 +151,13 @@ func (s *server) callTool(name string, args map[string]interface{}) map[string]i
 	fn, err := parser.FindFunc(file, function)
 	if err != nil {
 		return map[string]interface{}{
-			"content": []map[string]string{{"type": "text", "value": fmt.Sprintf("Error: %v", err)}},
+			"content": []map[string]string{{"type": "text", "text": fmt.Sprintf("Error: %v", err)}},
 			"isError": true,
 		}
 	}
 	if fn == nil {
 		return map[string]interface{}{
-			"content": []map[string]string{{"type": "text", "value": fmt.Sprintf("Function %q not found", function)}},
+			"content": []map[string]string{{"type": "text", "text": fmt.Sprintf("Function %q not found", function)}},
 			"isError": true,
 		}
 	}
@@ -174,7 +180,7 @@ func (s *server) callTool(name string, args map[string]interface{}) map[string]i
 			parts = append(parts, fmt.Sprintf("// --- %s (confidence: %.2f)\n%s\n", gen.Name(), res.Confidence, res.Code))
 		}
 		return map[string]interface{}{
-			"content": []map[string]string{{"type": "text", "value": strings.Join(parts, "\n")}},
+			"content": []map[string]string{{"type": "text", "text": strings.Join(parts, "\n")}},
 		}
 
 	case "analyze_function":
@@ -198,12 +204,12 @@ func (s *server) callTool(name string, args map[string]interface{}) map[string]i
 		}
 
 		return map[string]interface{}{
-			"content": []map[string]string{{"type": "text", "value": strings.Join(advice, "\n")}},
+			"content": []map[string]string{{"type": "text", "text": strings.Join(advice, "\n")}},
 		}
 
 	default:
 		return map[string]interface{}{
-			"content": []map[string]string{{"type": "text", "value": fmt.Sprintf("Unknown tool: %s", name)}},
+			"content": []map[string]string{{"type": "text", "text": fmt.Sprintf("Unknown tool: %s", name)}},
 			"isError": true,
 		}
 	}

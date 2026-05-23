@@ -1,3 +1,9 @@
+// Copyright (c) 2026 Kirill Scherba <kirill@scherba.ru>
+// All rights reserved.
+//
+// Use of this source code is governed by a BSD-style license that can be
+// found in the LICENSE file.
+
 // Package table generates table-driven test boilerplate for pure functions.
 package table
 
@@ -42,6 +48,38 @@ func typicalValue(t parser.TypeInfo) string {
 		return fmt.Sprintf("%s{}", t.Name)
 	default:
 		return fmt.Sprintf("%s{}", t.Name)
+	}
+}
+
+// wantValue returns a valid Go zero-value expression for a return type
+// in table-driven test expected values. For known interface types such as
+// error, or for types that cannot be instantiated with a literal, it
+// returns nil as a safe placeholder.
+func wantValue(t parser.TypeInfo) string {
+	switch t.Kind {
+	case parser.KindInt:
+		return "0"
+	case parser.KindFloat:
+		return "0.0"
+	case parser.KindString:
+		return `""`
+	case parser.KindBool:
+		return "false"
+	case parser.KindSlice, parser.KindMap, parser.KindPointer,
+		parser.KindChan, parser.KindFunc, parser.KindInterface:
+		return "nil"
+	case parser.KindStruct:
+		return fmt.Sprintf("%s{}", t.Name)
+	case parser.KindNamed:
+		// Named types may be interfaces (e.g. error) — use nil as safe default.
+		if t.Name == "error" {
+			return "nil"
+		}
+		return fmt.Sprintf("%s{} /* TODO: ensure %s is a struct type */", t.Name, t.Name)
+	case parser.KindGeneric:
+		return fmt.Sprintf("%s{}", t.Name)
+	default:
+		return "nil"
 	}
 }
 
@@ -104,7 +142,7 @@ func (tg *tableGen) Generate(fn *parser.FuncInfo) (*generator.Result, error) {
 
 		wants := make([]string, len(fn.Returns))
 		for j := range fn.Returns {
-			wants[j] = fmt.Sprintf("%s{}", fn.Returns[j].Name) // TODO placeholder
+			wants[j] = wantValue(fn.Returns[j])
 		}
 
 		lines := []string{
