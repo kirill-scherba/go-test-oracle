@@ -1,0 +1,22 @@
+{
+  "name": "go-test-oracle-mcp",
+  "asset_base": "go-test-oracle-mcp",
+  "title": {
+    "ru": "Тесты Go",
+    "en": "Go tests"
+  },
+  "description": {
+    "ru": "Разбор Go-функции и генерация тестов: граничные случаи, табличные тесты, фаззинг.",
+    "en": "Analyse a Go function and generate tests: edge cases, table tests, fuzzing."
+  },
+  "category": "dev",
+  "install": "binary",
+  "command": [
+    "go-test-oracle-mcp"
+  ],
+  "entries": {
+    "linux-amd64": "go-test-oracle-mcp",
+    "windows-amd64": "go-test-oracle-mcp.exe"
+  },
+  "docs": "https://github.com/kirill-scherba/go-test-oracle#install-in-anytext"
+}
