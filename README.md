@@ -3,6 +3,14 @@
 Go CLI tool that reads source code via AST and generates test scaffolding:
 edge cases, fuzz templates, table-driven boilerplate.
 
+## Install in AnyText
+
+One binary for Linux and Windows; Go only, nothing to install next to it.
+
+1. AnyText → Настройки → MCP → «Доступные серверы» → **Go tests** → «Установить».
+2. No settings are needed: it reads Go sources from the paths the agent gives it.
+3. Tools: `analyze_function` and `generate_tests`; both take a file path and a function name.
+
 ## Concept
 
 ```bash
